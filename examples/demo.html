@@ -133,11 +133,23 @@ body.fig-editing .fig-node.fig-dragging{cursor:grabbing;}
 @keyframes figFlow{to{stroke-dashoffset:-28;}}
 .fig-edges g.fig-flow .fe-main{stroke-dasharray:7 7 !important;animation:figFlow 1.05s linear infinite;}
 @media (prefers-reduced-motion:reduce){.fig-edges g.fig-flow .fe-main{animation:none;}}
+/* 노드 강조 애니메이션: data-anim=pulse|march|spin, 색은 인라인 --fig-anim */
+@property --fig-anim-a{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes figPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--fig-anim,#2563eb) 65%,transparent)}70%{box-shadow:0 0 0 14px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes figMarch{to{background-position:16px 0,-16px 100%,0 -16px,100% 16px}}
+@keyframes figSpin{to{--fig-anim-a:360deg}}
+.fig-node[data-anim]::after{content:'';position:absolute;pointer-events:none;border-radius:inherit;box-sizing:border-box}
+.fig-node[data-anim=pulse]::after{inset:-1px;animation:figPulse 1.8s ease-out infinite}
+.fig-node[data-anim=march]::after,.fig-node[data-anim=spin]::after{inset:-6px;padding:3px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.fig-node[data-anim=march]::after{border-radius:0;-webkit-mask:none;mask:none;padding:0;background:linear-gradient(90deg,var(--fig-anim,#2563eb) 55%,transparent 0),linear-gradient(90deg,var(--fig-anim,#2563eb) 55%,transparent 0),linear-gradient(0deg,var(--fig-anim,#2563eb) 55%,transparent 0),linear-gradient(0deg,var(--fig-anim,#2563eb) 55%,transparent 0);background-repeat:repeat-x,repeat-x,repeat-y,repeat-y;background-size:16px 3px,16px 3px,3px 16px,3px 16px;background-position:0 0,0 100%,0 0,100% 0;animation:figMarch .8s linear infinite}
+.fig-node[data-anim=spin]::after{background:conic-gradient(from var(--fig-anim-a),transparent 0 55%,var(--fig-anim,#2563eb) 88%,transparent 100%);animation:figSpin 2.2s linear infinite}
+@media (prefers-reduced-motion:reduce){.fig-node[data-anim]::after{animation:none}}
 
 /* 스냅 가이드 */
 .fig-guide{position:absolute;background:#f43f5e;z-index:40;pointer-events:none;}
 .fig-guide.v{width:1px;height:100%;top:0;}
 .fig-guide.h{height:1px;width:100%;left:0;}
+.fig-marquee{position:absolute;z-index:45;pointer-events:none;border:1px solid #2563eb;background:rgba(37,99,235,.08);border-radius:2px;}
 
 /* 리사이즈/끝점 핸들 */
 .fig-h{position:absolute;width:9px;height:9px;background:#fff;border:1.5px solid #2563eb;border-radius:2px;z-index:50;}
@@ -778,9 +790,46 @@ document.addEventListener('pointerdown',function(ev){
     if(selection.indexOf(node)<0) select(node,ev.shiftKey);
     startNodeDrag(cv,node,ev);
   } else {
-    clearSelection();
+    ev.preventDefault();
+    startMarquee(cv,ev);
   }
 },true);
+
+/* ---------------- 올가미(사각형) 다중 선택. 빈 곳 드래그, Shift는 기존 선택에 추가 ---------------- */
+function startMarquee(cv,ev){
+  var sc=effScale(cv), r0=cv.getBoundingClientRect();
+  var sx=(ev.clientX-r0.left)/sc, sy=(ev.clientY-r0.top)/sc;
+  var base=ev.shiftKey?selection.slice():[], box=null;
+  if(!ev.shiftKey) clearSelection();
+  function rectOf(e2){
+    var r=cv.getBoundingClientRect(), x=(e2.clientX-r.left)/sc, y=(e2.clientY-r.top)/sc;
+    return {x0:Math.min(sx,x),y0:Math.min(sy,y),x1:Math.max(sx,x),y1:Math.max(sy,y)};
+  }
+  function onMove(e2){
+    var m=rectOf(e2);
+    if(!box){
+      if(m.x1-m.x0<4&&m.y1-m.y0<4) return;
+      box=document.createElement('div'); box.className='fig-marquee'; box.setAttribute('data-fig-ui','');
+      cv.appendChild(box);
+    }
+    box.style.left=m.x0+'px'; box.style.top=m.y0+'px';
+    box.style.width=(m.x1-m.x0)+'px'; box.style.height=(m.y1-m.y0)+'px';
+    var inR=function(x,y){ return x>=m.x0&&x<=m.x1&&y>=m.y0&&y<=m.y1; };
+    var hit=$$('.fig-node',cv).filter(function(n){
+      return inR(n.offsetLeft,n.offsetTop)&&inR(n.offsetLeft+n.offsetWidth,n.offsetTop+n.offsetHeight);
+    });
+    var hitE=$$('.fig-edge',cv).filter(function(e){ var g=e._geom; return g&&inR(g.p0.x,g.p0.y)&&inR(g.p1.x,g.p1.y); });
+    selection=base.concat(hit.concat(hitE).filter(function(el){ return base.indexOf(el)<0; }));
+    applySelClass();
+  }
+  function onUp(){
+    document.removeEventListener('pointermove',onMove);
+    document.removeEventListener('pointerup',onUp);
+    if(box){ box.remove(); updatePanel(); refreshHandles(); }
+  }
+  document.addEventListener('pointermove',onMove);
+  document.addEventListener('pointerup',onUp);
+}
 
 function startNodeDrag(cv,primary,ev){
   var sc=effScale(cv);
@@ -986,7 +1035,7 @@ function startCurveDrag(cv,e,ev){
 /* ================================================================
    텍스트 편집 (더블클릭)
    ================================================================ */
-var TEXT_BLOCKS='h1,h2,h3,h4,h5,h6,p,li,td,th,dt,dd,figcaption,blockquote,summary';
+var TEXT_BLOCKS='h1,h2,h3,h4,h5,h6,p,li,td,th,dt,dd,figcaption,blockquote,summary,[data-fig-text]';   /* data-fig-text: div·span 등도 글자 편집 대상으로 지정 */
 document.addEventListener('dblclick',function(ev){
   if(!editing) return;
   if(ev.target.closest('[data-fig-ui]')){
@@ -1287,6 +1336,8 @@ function mountPanel(parent){
     '<div class="fp-row"><label>글자색</label><input type="color" id="fpFg"></div>'+
     '<div class="fp-row"><label>둥글기</label><input type="range" id="fpRad" min="0" max="40" step="1"><span class="val" id="fpRadV"></span></div>'+
     '<div class="fp-row"><label>투명도</label><input type="range" id="fpOp" min="10" max="100" step="5"><span class="val" id="fpOpV"></span></div>'+
+    '<div class="fp-row"><label>강조</label><select id="fpAnim"><option value="">없음</option><option value="pulse">맥박</option>'+
+      '<option value="march">테두리 흐름</option><option value="spin">회전 빛</option></select><input type="color" id="fpAnimC"></div>'+
     '<div class="fp-btns">'+
       '<button class="fig-pb tgl" id="fpShadow">그림자</button>'+
       '<button class="fig-pb" id="fpFront">맨앞</button><button class="fig-pb" id="fpBack">맨뒤</button>'+
@@ -1357,6 +1408,10 @@ function mountPanel(parent){
     eachN(function(n){ n.style.borderRadius=v+'px'; }); });
   $('#fpOp',p).addEventListener('input',function(){ var v=this.value; $('#fpOpV',p).textContent=v+'%';
     eachN(function(n){ n.style.opacity=v/100; }); });
+  $('#fpAnim',p).addEventListener('change',function(){ var v=this.value, c=$('#fpAnimC',p).value;
+    eachN(function(n){ if(v){ n.dataset.anim=v; if(!n.style.getPropertyValue('--fig-anim')) n.style.setProperty('--fig-anim',c); }
+      else { delete n.dataset.anim; n.style.removeProperty('--fig-anim'); } }); });
+  $('#fpAnimC',p).addEventListener('input',function(){ var v=this.value; eachN(function(n){ n.style.setProperty('--fig-anim',v); }); });
   $('#fpShadow',p).addEventListener('click',function(){
     var on=!this.classList.contains('on'); this.classList.toggle('on',on);
     eachN(function(n){ n.style.boxShadow=on?'0 8px 24px rgba(15,23,42,.14)':'none'; });
@@ -1499,6 +1554,8 @@ function updatePanel(){
     var op=Math.round((parseFloat(cs.opacity)||1)*100);
     $('#fpOp',p).value=op; $('#fpOpV',p).textContent=op+'%';
     $('#fpShadow',p).classList.toggle('on',cs.boxShadow!=='none');
+    $('#fpAnim',p).value=n.dataset.anim||'';
+    var ac=n.style.getPropertyValue('--fig-anim').trim(); $('#fpAnimC',p).value=/^#[0-9a-f]{6}$/i.test(ac)?ac:'#2563eb';
   }
   if(es.length&&!texting){
     var e=es[0];
@@ -1807,7 +1864,17 @@ var STATIC_CSS=
 '.fig-elabel{position:absolute;z-index:6;font-size:12px;font-weight:700;padding:2px 8px;border-radius:12px;'+
 'background:rgba(255,255,255,.94);box-shadow:0 1px 4px rgba(15,23,42,.14);white-space:nowrap;transform:translate(-50%,-50%);pointer-events:none}\n'+
 '@keyframes figFlow{to{stroke-dashoffset:-28}}\n'+
-'.fig-edges g.fig-flow .fe-main{stroke-dasharray:7 7 !important;animation:figFlow 1.05s linear infinite}\n';
+'.fig-edges g.fig-flow .fe-main{stroke-dasharray:7 7 !important;animation:figFlow 1.05s linear infinite}\n'+
+'@property --fig-anim-a{syntax:\'<angle>\';inherits:false;initial-value:0deg}\n'+
+'@keyframes figPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--fig-anim,#2563eb) 65%,transparent)}70%{box-shadow:0 0 0 14px transparent}100%{box-shadow:0 0 0 0 transparent}}\n'+
+'@keyframes figMarch{to{background-position:16px 0,-16px 100%,0 -16px,100% 16px}}\n'+
+'@keyframes figSpin{to{--fig-anim-a:360deg}}\n'+
+'.fig-node[data-anim]::after{content:\'\';position:absolute;pointer-events:none;border-radius:inherit;box-sizing:border-box}\n'+
+'.fig-node[data-anim=pulse]::after{inset:-1px;animation:figPulse 1.8s ease-out infinite}\n'+
+'.fig-node[data-anim=march]::after,.fig-node[data-anim=spin]::after{inset:-6px;padding:3px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}\n'+
+'.fig-node[data-anim=march]::after{border-radius:0;-webkit-mask:none;mask:none;padding:0;background:linear-gradient(90deg,var(--fig-anim,#2563eb) 55%,transparent 0),linear-gradient(90deg,var(--fig-anim,#2563eb) 55%,transparent 0),linear-gradient(0deg,var(--fig-anim,#2563eb) 55%,transparent 0),linear-gradient(0deg,var(--fig-anim,#2563eb) 55%,transparent 0);background-repeat:repeat-x,repeat-x,repeat-y,repeat-y;background-size:16px 3px,16px 3px,3px 16px,3px 16px;background-position:0 0,0 100%,0 0,100% 0;animation:figMarch .8s linear infinite}\n'+
+'.fig-node[data-anim=spin]::after{background:conic-gradient(from var(--fig-anim-a),transparent 0 55%,var(--fig-anim,#2563eb) 88%,transparent 100%);animation:figSpin 2.2s linear infinite}\n'+
+'@media (prefers-reduced-motion:reduce){.fig-node[data-anim]::after{animation:none}}\n';
 var STATIC_JS=
 '/* fig-static: 창 폭에 맞춰 캔버스를 축소하는 뷰어. 편집 기능은 없다 */\n'+
 '(function(){\n'+

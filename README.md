@@ -14,6 +14,16 @@
 
 ## 설치
 
+**딥다이브 팀원**
+
+이 저장소(`deepdive-kr/html-diagram`)는 [tonywjs/html-diagram](https://github.com/tonywjs/html-diagram)의 포크입니다. 원본에 노드 강조 애니메이션(`data-anim`)과 캔버스 밖 div·span 글자 편집(`data-fig-text`)을 더했습니다. 터미널에서 한 줄로 설치합니다.
+
+```bash
+git clone https://github.com/deepdive-kr/html-diagram.git ~/.claude/skills/html-diagram
+```
+
+이미 받아 두었다면 `git -C ~/.claude/skills/html-diagram pull`로 최신판을 받습니다. 설치 뒤 Claude에게 "도식 그려줘"처럼 요청하거나 `/html-diagram`으로 부릅니다.
+
 **Claude Code**
 
 ```bash

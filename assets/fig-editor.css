@@ -39,11 +39,23 @@ body.fig-editing .fig-node.fig-dragging{cursor:grabbing;}
 @keyframes figFlow{to{stroke-dashoffset:-28;}}
 .fig-edges g.fig-flow .fe-main{stroke-dasharray:7 7 !important;animation:figFlow 1.05s linear infinite;}
 @media (prefers-reduced-motion:reduce){.fig-edges g.fig-flow .fe-main{animation:none;}}
+/* 노드 강조 애니메이션: data-anim=pulse|march|spin, 색은 인라인 --fig-anim */
+@property --fig-anim-a{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes figPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--fig-anim,#2563eb) 65%,transparent)}70%{box-shadow:0 0 0 14px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes figMarch{to{background-position:16px 0,-16px 100%,0 -16px,100% 16px}}
+@keyframes figSpin{to{--fig-anim-a:360deg}}
+.fig-node[data-anim]::after{content:'';position:absolute;pointer-events:none;border-radius:inherit;box-sizing:border-box}
+.fig-node[data-anim=pulse]::after{inset:-1px;animation:figPulse 1.8s ease-out infinite}
+.fig-node[data-anim=march]::after,.fig-node[data-anim=spin]::after{inset:-6px;padding:3px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.fig-node[data-anim=march]::after{border-radius:0;-webkit-mask:none;mask:none;padding:0;background:linear-gradient(90deg,var(--fig-anim,#2563eb) 55%,transparent 0),linear-gradient(90deg,var(--fig-anim,#2563eb) 55%,transparent 0),linear-gradient(0deg,var(--fig-anim,#2563eb) 55%,transparent 0),linear-gradient(0deg,var(--fig-anim,#2563eb) 55%,transparent 0);background-repeat:repeat-x,repeat-x,repeat-y,repeat-y;background-size:16px 3px,16px 3px,3px 16px,3px 16px;background-position:0 0,0 100%,0 0,100% 0;animation:figMarch .8s linear infinite}
+.fig-node[data-anim=spin]::after{background:conic-gradient(from var(--fig-anim-a),transparent 0 55%,var(--fig-anim,#2563eb) 88%,transparent 100%);animation:figSpin 2.2s linear infinite}
+@media (prefers-reduced-motion:reduce){.fig-node[data-anim]::after{animation:none}}
 
 /* 스냅 가이드 */
 .fig-guide{position:absolute;background:#f43f5e;z-index:40;pointer-events:none;}
 .fig-guide.v{width:1px;height:100%;top:0;}
 .fig-guide.h{height:1px;width:100%;left:0;}
+.fig-marquee{position:absolute;z-index:45;pointer-events:none;border:1px solid #2563eb;background:rgba(37,99,235,.08);border-radius:2px;}
 
 /* 리사이즈/끝점 핸들 */
 .fig-h{position:absolute;width:9px;height:9px;background:#fff;border:1.5px solid #2563eb;border-radius:2px;z-index:50;}

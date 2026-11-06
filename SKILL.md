@@ -53,8 +53,9 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory <산출 폴더>
 | `.fig-node` | `id` 필수(전 문서 유일), 인라인 style로 `left/top/width` 필수. `height`는 선택이지만 **화살표가 붙는 노드는 지정한다**(글꼴 환경이 달라도 끝점이 같은 자리에 오도록). 배포본 내보내기 때 미지정 높이는 그 시점 값으로 굳는다. 내부 HTML 자유 |
 | 투명 노드 | 라벨·캡션·섹션 제목도 노드로: `background:transparent;border:none` |
 | `.fig-edge` | 빈 div. `data-from`/`data-to` = **노드 id 또는 "x,y"**. 없는 id를 가리키면 표시되지 않고 콘솔 경고가 난다. 옵션: `data-style`(solid\|dashed\|dotted), `data-width`, `data-color`(hex, rgb, CSS 변수 모두 가능), `data-curve`(-1~1, 양수는 진행 방향 기준 오른쪽으로 휨. 가로 화살표면 아래), `data-arrow`(end\|both\|none), `data-label`(곡선 중앙에 놓임), `data-opacity`(0~1), `data-anchor-from/to`(auto\|top\|bottom\|left\|right\|**"fx,fy" 0~1 비율 고정점**), `data-flow="on"`(움직이는 점선 흐름 애니메이션) |
+| 노드 강조 애니메이션 | `.fig-node`에 `data-anim="pulse\|march\|spin"`(맥박·테두리 흐름·회전 빛), 색은 인라인 `--fig-anim:#hex`(기본 #2563eb). 편집 모드 속성 패널의 "강조"로도 지정. 사각 테두리 기준이라 마름모 등 비사각 노드엔 어울리지 않는다. 핵심 1~2곳에만 쓴다 |
 | 양방향 화살표 | 같은 두 노드 사이에 왕복 화살표를 둘 땐 반드시 **앵커를 다르게** 지정한다(auto 둘이면 같은 점에 겹침). 곡률은 진행 방향 기준이므로 왕복 두 화살표에 **같은 부호**를 주면 서로 반대쪽으로 휜다. 예: 전송 `data-anchor-to="0.3,1"` / 배포 `data-anchor-from="0.7,1"` + 같은 곡률 값 |
-| 캔버스 밖 | 제목 등 일반 HTML 가능. 글자 편집만 되고 이동은 안 됨. 도형·움직일 요소는 반드시 캔버스 안에 |
+| 캔버스 밖 | 제목 등 일반 HTML 가능. 글자 편집만 되고 이동은 안 됨. 더블클릭 편집은 h1~h6·p·li·td 등 문단 태그만 되므로, div·span으로 만든 글자(키커·칩·범례)는 `data-fig-text` 속성을 붙인다. 도형·움직일 요소는 반드시 캔버스 안에 |
 | 금지 | 노드 위치를 CSS 클래스로만 지정(복제·붙여넣기 오프셋이 인라인 값 기준이라 복사본이 모서리로 튐), `.fig-edges` SVG 직접 작성(엔진 생성물), id 중복 |
 
 ## 타이포그래피·공간 (하한 미만 금지)
